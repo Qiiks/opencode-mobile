@@ -20,10 +20,12 @@ import { dragOffset, flingTarget, CLAIM_MIN_DX, VERTICAL_FAIL_DY } from "../lib/
 export function WideScroll({
   children,
   contentContainerStyle,
+  style,
   testID,
 }: {
   children: ReactNode
   contentContainerStyle?: StyleProp<ViewStyle>
+  style?: StyleProp<ViewStyle>
   testID?: string
 }) {
   const scrollRef = useRef<ScrollView>(null)
@@ -67,6 +69,7 @@ export function WideScroll({
           scrollEnabled={false}
           showsHorizontalScrollIndicator
           contentContainerStyle={contentContainerStyle}
+          style={style}
           testID={testID}
           onScroll={(e) => {
             offsetRef.current = e.nativeEvent.contentOffset.x
