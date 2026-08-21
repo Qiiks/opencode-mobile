@@ -1,0 +1,5 @@
+v0.4.16 — community maintenance: keyboard, drafts, fullscreen diffs
+
+• Merges upstream PR #182 — composer no longer hides behind the keyboard (#156, #194), the transcript follows new messages again (#155), dead SSE connections recover after network changes instead of showing a green-but-dead stream (#186), and live events start immediately instead of waiting on metadata fetches (#189). Also: stale transcripts refresh after reconnect, assistant text is long-press copyable, horizontal scrolling works in code blocks/diffs/tables, and the session list pages past 50 entries.
+• Merges PR #191 — unsent composer drafts are preserved per session when you switch between conversations.
+• Merges PR #192 — new fullscreen viewer for code, tool output and diffs; colored unified diff rendering including apply_patch calls; end-of-task Review Changes section summarizing every patch the agent made.
