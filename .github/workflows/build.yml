@@ -41,6 +41,10 @@ jobs:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
       SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      # Fork builds have no Sentry secrets; empty org/project makes the
+      # sourcemap upload fail the whole build. Disable auto-upload — crash
+      # reporting itself still works via the DSN baked into the JS bundle.
+      SENTRY_DISABLE_AUTO_UPLOAD: "1"
     steps:
       - uses: actions/checkout@v6
 
