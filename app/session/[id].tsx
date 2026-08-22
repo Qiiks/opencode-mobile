@@ -869,7 +869,7 @@ export default function SessionScreen() {
             onLongPress={() => cycleAgent(-1)}
           >
             <View style={[s.agentDot, { backgroundColor: agentColor }]} />
-            <Text style={[s.agentLabel, isDark && s.textWhite]}>{agent || "build"}</Text>
+            <Text style={[s.agentLabel, isDark && s.textWhite]} numberOfLines={1}>{agent || "build"}</Text>
             <Ionicons name="swap-horizontal-outline" size={12} color={isDark ? "#888888" : "#666666"} />
           </TouchableOpacity>
 
@@ -1056,9 +1056,10 @@ const s = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    flexShrink: 1,
   },
   agentDot: { width: 8, height: 8, borderRadius: 4 },
-  agentLabel: { fontSize: 12, fontWeight: "600", color: "#0a0a0a" },
+  agentLabel: { fontSize: 12, fontWeight: "600", color: "#0a0a0a", maxWidth: 120 },
   modelChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -1067,6 +1068,7 @@ const s = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    flexShrink: 1,
   },
   modelChipDark: { backgroundColor: "#1a1a1a" },
   modelLabel: { fontSize: 12, color: "#666666", maxWidth: 160 },
@@ -1080,6 +1082,7 @@ const s = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    flexShrink: 0,
   },
   variantChipDark: { backgroundColor: "#1a1a1a" },
   variantChipActive: { backgroundColor: "#f5f3ff" },
