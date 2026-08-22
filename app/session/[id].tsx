@@ -716,7 +716,9 @@ export default function SessionScreen() {
         // hidden. keyboardVerticalOffset closes the gap; see
         // src/lib/keyboard-offset.ts for the measured numbers.
         behavior="padding"
-        keyboardVerticalOffset={keyboardVerticalOffset(Platform.OS, insets.top)}
+        // Under gesture nav the keyboard event still ignores the system's
+        // bottom inset, so pass insets.bottom to close that gap too (#156).
+        keyboardVerticalOffset={keyboardVerticalOffset(Platform.OS, insets.top, insets.bottom)}
       >
         {/* Session info pulldown */}
         <SessionInfo

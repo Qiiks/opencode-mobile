@@ -35,3 +35,20 @@ test("offset makes computed padding equal the real keyboard height", () => {
   const withFix = windowBottom - (keyboardScreenY - offset)
   assert.ok(Math.abs(withFix - keyboardHeight) < 0.01, `expected ~${keyboardHeight}, got ${withFix}`)
 })
+
+// Regression guard for the bottom home-indicator inset on gesture nav (#156).
+test("Android includes the bottom inset when present", () => {
+  assert.equal(keyboardVerticalOffset("android", 48.857, 24), 72.857)
+})
+
+test("Android with zero bottom inset is unchanged", () => {
+  assert.equal(keyboardVerticalOffset("android", 48.857, 0), 48.857)
+})
+
+test("Android with two bogus insets still returns 0", () => {
+  assert.equal(keyboardVerticalOffset("android", -10, -5), 0)
+})
+
+test("iOS ignores the bottom inset argument", () => {
+  assert.equal(keyboardVerticalOffset("ios", 0, 24), IOS_KEYBOARD_VERTICAL_OFFSET)
+})

@@ -36,13 +36,20 @@
 // Adding `insets.top` to keyboardVerticalOffset re-aligns the two spaces:
 // padding becomes 237.14 + 48.86 = 286, exactly the keyboard height.
 //
+// Android still falls short under gesture navigation, though: the native
+// keyboard event ignores the system's bottom inset (home indicator / gesture
+// bar), so the keyboard's reported height underestimates what it actually
+// covers. Pass `insets.bottom` (~24-48dp on Pixel 6) as the third argument to
+// close that remaining gap — the composer otherwise sits behind the gesture
+// bar even with the status-bar correction applied.
+//
 // iOS keeps its existing empirical 90 — it does not have this mismatch, and
 // changing it is out of scope for this fix.
 
 export const IOS_KEYBOARD_VERTICAL_OFFSET = 90
 
-export function keyboardVerticalOffset(platform: string, insetTop: number): number {
+export function keyboardVerticalOffset(platform: string, insetTop: number, insetBottom = 0): number {
   if (platform === "ios") return IOS_KEYBOARD_VERTICAL_OFFSET
   // Guard against a bogus/unmeasured inset so we never push content *down*.
-  return Math.max(0, insetTop)
+  return Math.max(0, insetTop) + Math.max(0, insetBottom)
 }
