@@ -98,6 +98,7 @@
     },
     "actions": {
       "editMessage": "Edit message",
+      "undoMessage": "Undo message",
       "replace": "Replace",
       "copyMessage": "Copy message",
       "selectText": "Select text"

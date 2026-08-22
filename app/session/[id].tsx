@@ -31,12 +31,14 @@ import {
   ImageAttachments,
   SessionInfo,
   SelectableTextModal,
+  MessageActionsSheet,
   type SlashCommand,
   type Attachment,
 } from "../../src/components/chat"
 import { extractCopyText, hasCopyableText } from "../../src/lib/message-copy-text"
+import { buildMessageActions, type MessageAction } from "../../src/lib/message-actions"
 import { shouldAutoScroll, shouldShowScrollButton, transcriptSignature } from "../../src/lib/auto-scroll"
-import { useSessions } from "../../src/stores/sessions"
+import { useSessions, type RevertResult } from "../../src/stores/sessions"
 import { useEvents, refreshPending } from "../../src/stores/events"
 import { useConnections } from "../../src/stores/connections"
 import { useAuth } from "../../src/stores/auth"
@@ -96,6 +98,9 @@ export default function SessionScreen() {
   // text. Kept as the text itself rather than a messageID so the sheet keeps
   // showing a stable snapshot even if the message streams or is reverted.
   const [selectableText, setSelectableText] = useState<string | null>(null)
+  // Non-null when the message-actions sheet is open; holds which message it
+  // targets and the action list computed for it at long-press time.
+  const [actionSheet, setActionSheet] = useState<{ messageID: string; actions: MessageAction[] } | null>(null)
 
   const {
     currentSession,
@@ -225,19 +230,24 @@ export default function SessionScreen() {
     [messages, parts, revertMessageID, transcriptBound],
   )
 
-  // Tracks the latest composer text without pulling `input` into
-  // handleMessageLongPress's deps — kept as a plain ref assignment (not
-  // state) so the callback below stays referentially stable across
+  // Tracks the latest composer text without pulling `input` into the
+  // long-press action handlers' deps — kept as a plain ref assignment (not
+  // state) so the callbacks below stay referentially stable across
   // keystrokes for MessageBubble's custom memo comparator.
+  // Shared error mapping for revert failures (used by both Edit and Undo).
+  const showRevertError = useCallback((result: Extract<RevertResult, { ok: false }>) => {
+    if (result.reason === "unsupported") {
+      Alert.alert(t("session.alerts.notSupportedTitle"), t("session.alerts.notSupportedMessage"))
+    } else if (result.reason === "auth") {
+      Alert.alert(t("session.alerts.revertAuthFailedTitle"), t("session.alerts.revertAuthFailedMessage"))
+    } else {
+      Alert.alert(t("session.alerts.editFailedTitle"), t("session.alerts.editFailedMessage"))
+    }
+  }, [t])
+
   const applyRevertResult = useCallback((result: Awaited<ReturnType<typeof revertToMessage>>) => {
     if (!result.ok) {
-      if (result.reason === "unsupported") {
-        Alert.alert(t("session.alerts.notSupportedTitle"), t("session.alerts.notSupportedMessage"))
-      } else if (result.reason === "auth") {
-        Alert.alert(t("session.alerts.revertAuthFailedTitle"), t("session.alerts.revertAuthFailedMessage"))
-      } else {
-        Alert.alert(t("session.alerts.editFailedTitle"), t("session.alerts.editFailedMessage"))
-      }
+      showRevertError(result)
       return
     }
     setInput(result.text)
@@ -248,7 +258,7 @@ export default function SessionScreen() {
         .filter((f): f is typeof f & { url: string; mime: string } => !!f.url && !!f.mime)
         .map((f) => ({ uri: f.url, mime: f.mime, filename: f.filename })),
     )
-  }, [t])
+  }, [showRevertError])
 
   // Stable across renders (reads fresh state via getState() rather than
   // closing over props) so MessageBubble's custom memo comparator can bail
@@ -257,36 +267,39 @@ export default function SessionScreen() {
     const state = useSessions.getState()
     const parts = state.parts[messageID]
     const isUser = state.messages.find((m) => m.id === messageID)?.role === "user"
-    const copyText = extractCopyText(parts)
-    const canCopy = hasCopyableText(parts)
+    const actions = buildMessageActions({
+      isUser,
+      // Copy/select apply to both roles (for assistant prose they are the
+      // only copy path — Markdown.tsx strips `selectable` inside the
+      // transcript FlatList); undo/edit stay user-only (reverting to an
+      // assistant message is not a supported operation).
+      canCopy: hasCopyableText(parts),
+    })
 
-    const actions: Parameters<typeof Alert.alert>[2] = [{ text: t("common.cancel"), style: "cancel" }]
+    // An empty list means there is no action worth interrupting the user for
+    // (e.g. a tool-only message with no prose) — don't open the sheet.
+    if (actions.length === 0) return
 
-    // Copy/select come first because they apply to both roles. For assistant
-    // messages they are the *only* copy path: Markdown.tsx strips `selectable`
-    // from rendered prose to avoid facebook/react-native#46999 inside the
-    // transcript FlatList.
-    if (canCopy) {
-      actions.push({
-        text: t("session.actions.copyMessage"),
-        onPress: () => {
+    setActionSheet({ messageID, actions })
+  }, [])
+
+  // Resolves an action picked from the message-actions sheet. Reads fresh
+  // state via getState() (same stability rationale as the handler above).
+  const handleActionSelect = useCallback(
+    async (messageID: string, action: MessageAction) => {
+      const state = useSessions.getState()
+      const copyText = extractCopyText(state.parts[messageID])
+
+      switch (action) {
+        case "copy":
           Clipboard.setStringAsync(copyText).catch(() => {})
-        },
-      })
-      actions.push({
-        text: t("session.actions.selectText"),
-        onPress: () => setSelectableText(copyText),
-      })
-    }
-
-    // Edit/revert stays user-only — reverting to an assistant message is not
-    // a supported operation.
-    if (isUser) {
-      actions.push({
-        text: t("session.actions.editMessage"),
-        onPress: () => {
+          break
+        case "select":
+          setSelectableText(copyText)
+          break
+        case "edit": {
           const doRevert = async () => {
-            const result = await useSessions.getState().revertToMessage(messageID)
+            const result = await state.revertToMessage(messageID)
             applyRevertResult(result)
           }
           // Editing overwrites the composer — don't silently clobber an
@@ -301,19 +314,30 @@ export default function SessionScreen() {
               ],
               { cancelable: false },
             )
-            return
+            break
           }
           doRevert()
-        },
-      })
-    }
+          break
+        }
+        case "undo": {
+          // Undo reverts the message and lets it disappear. Unlike Edit, the
+          // composer is NOT prefilled — clear any draft so nothing stale can
+          // be sent as a duplicate.
+          const result = await state.revertToMessage(messageID)
+          if (result.ok) {
+            setInput("")
+            setAttachments([])
+          } else {
+            showRevertError(result)
+          }
+          break
+        }
+      }
 
-    // Nothing but Cancel means there is no action worth interrupting the
-    // user for (e.g. a tool-only message with no prose).
-    if (actions.length === 1) return
-
-    Alert.alert(t("session.alerts.messageActionsTitle"), undefined, actions)
-  }, [applyRevertResult, t])
+      setActionSheet(null)
+    },
+    [applyRevertResult, showRevertError, t],
+  )
 
   const scrollToBottom = useCallback((animated = true) => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated })
@@ -744,6 +768,23 @@ export default function SessionScreen() {
           visible={selectableText !== null}
           text={selectableText ?? ""}
           onClose={() => setSelectableText(null)}
+        />
+
+        {/* Message-actions sheet (long-press). Rendered outside the
+            transcript FlatList for the same reason as SelectableTextModal. */}
+        <MessageActionsSheet
+          visible={actionSheet !== null}
+          actions={actionSheet?.actions ?? []}
+          onSelect={(action) => {
+            if (actionSheet) handleActionSelect(actionSheet.messageID, action)
+          }}
+          onClose={() => setActionSheet(null)}
+          labels={{
+            copy: t("session.actions.copyMessage"),
+            select: t("session.actions.selectText"),
+            edit: t("session.actions.editMessage"),
+            undo: t("session.actions.undoMessage"),
+          }}
         />
 
         {/* SSE reconnect/connected banner */}
