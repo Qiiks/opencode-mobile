@@ -139,6 +139,7 @@ const lightTheme = {
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 3,
+    lineHeight: 22,
   },
   list: { marginBottom: 4 },
   li: { marginBottom: 2 },
