@@ -60,3 +60,21 @@ test("parseDiffText restores serialized diff line types", () => {
     { type: "add", text: "added" },
   ])
 })
+
+// BUG 4 ("Open full screen" shows blank content): a diff whose content is an
+// empty string used to parse into a single empty context line, rendering an
+// empty native row instead of no rows at all. Empty content must produce no
+// diff lines.
+test("parseDiffText returns no lines for empty content", () => {
+  assert.deepEqual(parseDiffText(""), [])
+})
+
+// A line with no diff marker (+, -, or leading space) falls through to the
+// context branch rather than being dropped.
+test("parseDiffText treats a marker-less line as context", () => {
+  assert.deepEqual(parseDiffText("no markers"), [{ type: "context", text: "no markers" }])
+})
+
+test("parseDiffText parses a single add-only line", () => {
+  assert.deepEqual(parseDiffText("+only add"), [{ type: "add", text: "only add" }])
+})

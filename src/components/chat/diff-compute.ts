@@ -13,6 +13,7 @@ export interface DiffLine {
 // Parse the serialized form used by ContentViewerButton. Each line starts
 // with the diff marker added by DiffView: +, -, or a space for context.
 export function parseDiffText(content: string): DiffLine[] {
+  if (content.length === 0) return []
   return content.split(/\r?\n/).map((line) => {
     if (line.startsWith("+")) return { type: "add", text: line.slice(1) }
     if (line.startsWith("-")) return { type: "remove", text: line.slice(1) }

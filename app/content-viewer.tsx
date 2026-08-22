@@ -6,7 +6,7 @@ import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorSchem
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { WideScroll } from "../src/components/WideScroll"
-import { getContentViewer } from "../src/lib/content-viewer"
+import { useContentViewer } from "../src/lib/content-viewer"
 import { parseDiffText, type DiffLine } from "../src/components/chat/diff-compute"
 
 function DiffContent({ lines, isDark }: { lines: DiffLine[]; isDark: boolean }) {
@@ -47,8 +47,7 @@ export default function ContentViewerScreen() {
   const isDark = useColorScheme() === "dark"
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
-  const viewer = getContentViewer()
-
+  const viewer = useContentViewer((s) => s.viewer)
   if (!viewer) {
     return (
       <View style={[s.empty, isDark && s.emptyDark]}>
