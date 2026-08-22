@@ -1,0 +1,7 @@
+v0.4.16 — community maintenance (maint.2): 5 bug fixes
+
+• Keyboard offset now includes the bottom (gesture-navigation) inset so the composer stays visible above Gboard on Pixel 6 and similar edge-to-edge devices (#156).
+• Toolbar agent/model/thinking selector no longer pushes the thinking-variant chip off-screen when names are long — chips shrink, variant stays priority.
+• Long-press message action sheet replaced Alert.alert with a proper Modal bottom sheet; added "Undo message" (revert + clear composer) alongside "Edit message" (revert + prefill).
+• "Open full screen" content viewer fixed — migrated to Zustand store so content persists across navigation; hardened parseDiffText edge cases.
+• Inline code (codespan) lineHeight matched to paragraph text — no more overlap with the following line.
